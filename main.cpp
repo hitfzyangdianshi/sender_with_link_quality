@@ -73,7 +73,7 @@ int main(int argc, char** argv)
 
         cout << "send " << packet.packet_num << "\t" << sendBytes << endl; 
 
-        usleep(1e4);
+      //  usleep(1e3);
     }
 
 
