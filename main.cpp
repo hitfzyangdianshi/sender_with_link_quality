@@ -10,21 +10,20 @@
 
 #include <unistd.h>
 
+
 using namespace std;
+using namespace chrono;
 
 
 struct data_packet {
     __uint16_t senderID;
     __uint32_t packet_num;
 
-    __uint64_t tv_sec;		/* Seconds.  */
-    __uint64_t tv_usec;	/* Microseconds.  */ // __SLONGWORD_TYPE	long int
+    __uint64_t time_since_epoch_micro;
 
     __int32_t payload[10];
-}; // sizeof(PACKET) should be 64
+}; // sizeof(PACKET) should be 56
 typedef struct data_packet PACKET;
-
-struct timeval current_time;
 
 
 int main(int argc, char** argv)
@@ -46,9 +45,9 @@ int main(int argc, char** argv)
 
 
     int brdcFd;
-    if ((brdcFd = socket(PF_INET, SOCK_DGRAM, 0)) == -1) {
+    while ((brdcFd = socket(PF_INET, SOCK_DGRAM, 0)) == -1) {
         fprintf(stderr,"socket fail, errno=%d, %s\n", errno, strerror(errno));
-        return -1;
+        continue;
     }
     int optval = 1; 
     setsockopt(brdcFd, SOL_SOCKET, SO_BROADCAST | SO_REUSEPORT, &optval, sizeof(int));
@@ -59,21 +58,23 @@ int main(int argc, char** argv)
     theirAddr.sin_port = htons(port);
 
 
+    // __uint64_t microseconds_since_epoch = duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
+
+
+
     for (packet.packet_num = 0;; packet.packet_num++) {
-        gettimeofday(&current_time, NULL);
-        packet.tv_sec = current_time.tv_sec;
-        packet.tv_usec = current_time.tv_usec;
-
-
         int sendBytes;
+        
+        packet.time_since_epoch_micro = duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
+
         if ((sendBytes = sendto(brdcFd, (char*)&packet, sizeof(packet), 0, (struct sockaddr*)&theirAddr, sizeof(struct sockaddr))) == -1) {
             fprintf(stderr,"sendto fail, errno=%d, %s\n", errno, strerror(errno));
-            return -1;
+            continue;
         }
 
         cout << "send " << packet.packet_num << "\t" << sendBytes << endl; 
 
-      //  usleep(1e3);
+        usleep(1e4);  // 10ms
     }
 
 
