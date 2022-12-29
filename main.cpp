@@ -21,8 +21,8 @@ struct data_packet {
 
     __uint64_t time_since_epoch_micro;
 
-    __int32_t payload[10];
-}; // sizeof(PACKET) should be 56
+    __int32_t payload[1000];
+}; 
 typedef struct data_packet PACKET;
 
 
