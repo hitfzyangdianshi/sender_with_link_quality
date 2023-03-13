@@ -1,18 +1,44 @@
-﻿#include <bits/stdc++.h>
-#include <sys/time.h>
+#include <iostream>
+#include <cstdio>
+#include <cstdlib>
+#include <chrono>
+
 
 #include<sys/types.h>
-#include<sys/socket.h>
-#include<sys/wait.h>
+#include <WinSock2.h>
 
-#include<netinet/in.h>
-#include<arpa/inet.h>
+#include <windows.h>
 
-#include <unistd.h>
+#pragma warning(disable : 4996)
+
+using namespace std;
+#pragma comment(lib,"WS2_32.lib")
+
 
 
 using namespace std;
 using namespace chrono;
+
+
+#define __uint16_t uint16_t 
+#define __uint32_t uint32_t 
+#define __uint64_t uint64_t
+#define __int32_t int32_t 
+#define __int64_t int64_t 
+
+
+void usleep(__int64 usec)
+{
+    HANDLE timer;
+    LARGE_INTEGER ft;
+
+    ft.QuadPart = -(10 * usec); // Convert to 100 nanosecond interval, negative value indicates relative time
+
+    timer = CreateWaitableTimer(NULL, TRUE, NULL);
+    SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
+    WaitForSingleObject(timer, INFINITE);
+    CloseHandle(timer);
+}
 
 
 struct data_packet {
@@ -22,7 +48,7 @@ struct data_packet {
     __uint64_t time_since_epoch_micro;
 
     __int32_t payload[1000];
-}; 
+};
 typedef struct data_packet PACKET;
 
 
@@ -42,16 +68,20 @@ int main(int argc, char** argv)
 
     PACKET packet;
     packet.senderID = sender_ID;
-    for (int i = 0; i < 10; i++)    packet.payload[i] = 9000+i;
+    for (int i = 0; i < 10; i++)    packet.payload[i] = 9000 + i;
+
+
+    WSADATA wsaData;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
 
 
     int brdcFd;
-    while ((brdcFd = socket(PF_INET, SOCK_DGRAM, 0)) == -1) {
-        fprintf(stderr,"socket fail, errno=%d, %s\n", errno, strerror(errno));
+    while ((brdcFd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1) {
+        fprintf(stderr, "socket fail, errno=%d, %s\n", errno, strerror(errno));
         continue;
     }
-    int optval = 1; 
-    setsockopt(brdcFd, SOL_SOCKET, SO_BROADCAST | SO_REUSEPORT, &optval, sizeof(int));
+    int optval = 1;
+    // setsockopt(brdcFd, SOL_SOCKET, SO_BROADCAST, &optval, sizeof(int));
     struct sockaddr_in theirAddr;
     memset(&theirAddr, 0, sizeof(struct sockaddr_in));
     theirAddr.sin_family = AF_INET;
@@ -81,7 +111,7 @@ int main(int argc, char** argv)
         }
     }
     else {
-        for (packet.packet_num = 0; packet.packet_num< numbers_of_packets_sent; packet.packet_num++) {
+        for (packet.packet_num = 0; packet.packet_num < numbers_of_packets_sent; packet.packet_num++) {
             int sendBytes;
 
             packet.time_since_epoch_micro = duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
@@ -100,7 +130,8 @@ int main(int argc, char** argv)
     }
 
 
-    close(brdcFd);
+    closesocket(brdcFd);
+    WSACleanup();
 
     return 0;
 }
